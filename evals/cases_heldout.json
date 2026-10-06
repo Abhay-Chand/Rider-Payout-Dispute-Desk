@@ -1,0 +1,23 @@
+[
+  {"scenario": "held-out: Devanagari number word for the date", "rider_id": "R039",
+   "turns": [{"from": "rider", "message_id": "wamid.X01A", "text": "सोलह तारीख के दो ऑर्डर का पैसा नहीं आया", "received_at": "2026-09-22T10:10:00+05:30"}],
+   "expected": {"payout": 176, "approval": null, "escalation": "no", "reply_mentions": ["176"]}},
+  {"scenario": "held-out: Hinglish number words for count and date", "rider_id": "R017",
+   "turns": [{"from": "rider", "message_id": "wamid.X02A", "text": "chaar orders ka paisa nahi aaya bees tarikh ko", "received_at": "2026-09-22T10:00:00+05:30"}],
+   "expected": {"payout": 0, "approval": 352, "escalation": "no", "reply_mentions": ["352"]}},
+  {"scenario": "held-out: two days as number words", "rider_id": "R030",
+   "turns": [{"from": "rider", "message_id": "wamid.X03A", "text": "unnis aur bees dono din ka hisaab galat hai", "received_at": "2026-09-23T10:00:00+05:30"}],
+   "expected": {"one_of": [{"payout": 19, "approval": 10}, {"payout": 10, "approval": 19}], "escalation": "no", "reply_mentions": ["19", "10"]}},
+  {"scenario": "held-out: English, 'bonus', ordinal date", "rider_id": "R023",
+   "turns": [{"from": "rider", "message_id": "wamid.X04A", "text": "I completed twelve deliveries on the 20th but there was no bonus", "received_at": "2026-09-22T11:00:00+05:30"}],
+   "expected": {"payout": 150, "approval": null, "escalation": "no", "reply_mentions": ["150"]}},
+  {"scenario": "held-out: Devanagari with an order id", "rider_id": "R038",
+   "turns": [{"from": "rider", "message_id": "wamid.X05A", "text": "T659741 पर सर्ज कम लगा", "received_at": "2026-09-22T12:20:00+05:30"}],
+   "expected": {"payout": 8, "approval": null, "escalation": "no", "reply_mentions": ["8"]}},
+  {"scenario": "held-out: 'double' penalty", "rider_id": "R001",
+   "turns": [{"from": "rider", "message_id": "wamid.X06A", "text": "19 ko cancel penalty double laga", "received_at": "2026-09-22T09:00:00+05:30"}],
+   "expected": {"payout": 10, "approval": null, "escalation": "no", "reply_mentions": ["10"]}},
+  {"scenario": "held-out: typos with an order id", "rider_id": "R004",
+   "turns": [{"from": "rider", "message_id": "wamid.X07A", "text": "T688316 ka sarge nai mila yaar", "received_at": "2026-09-23T12:00:00+05:30"}],
+   "expected": {"payout": 31, "approval": null, "escalation": "no", "reply_mentions": ["31"]}}
+]

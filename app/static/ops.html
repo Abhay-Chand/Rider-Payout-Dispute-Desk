@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payout desk · QuickDrop</title>
+<style>
+/* Public Sans, shipped with the app (SIL OFL). latin-ext carries ₹. */
+@font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 500; font-display: swap; src: url(/static/fonts/public-sans-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-latin-600-normal.woff2) format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "Public Sans"; font-weight: 400; font-display: swap; src: url(/static/fonts/public-sans-latin-ext-400-normal.woff2) format("woff2"); unicode-range: U+0100-024F, U+20A0-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Public Sans"; font-weight: 500; font-display: swap; src: url(/static/fonts/public-sans-latin-ext-500-normal.woff2) format("woff2"); unicode-range: U+0100-024F, U+20A0-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Public Sans"; font-weight: 600; font-display: swap; src: url(/static/fonts/public-sans-latin-ext-600-normal.woff2) format("woff2"); unicode-range: U+0100-024F, U+20A0-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Public Sans"; font-weight: 700; font-display: swap; src: url(/static/fonts/public-sans-latin-ext-700-normal.woff2) format("woff2"); unicode-range: U+0100-024F, U+20A0-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root {
+  --ink: #16202B; --text: #1A2330; --muted: #5D6877; --faint: #8C96A3;
+  --canvas: #F2F4F7; --surface: #FFFFFF; --line: #E1E5EA; --line-soft: #EDF0F3; --sunken: #F7F8FA;
+  --paid: #0B7A55; --paid-bg: #E4F4EC; --wait: #9A5B00; --wait-bg: #FFF4E0; --esc: #A8322A; --esc-bg: #FCEDEB;
+  --act: #2D44C2; --act-bg: #EAEEFC;
+  --rule: var(--line);
+  --shadow: 0 1px 2px rgba(22, 32, 43, .06), 0 1px 1px rgba(22, 32, 43, .03);
+  --r-panel: 12px; --r-ctl: 8px;
+  --font: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; font: 14px/1.5 var(--font); color: var(--text); background: var(--canvas); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; border-radius: 4px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+[hidden] { display: none !important; }
+
+/* controls */
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 15px; border-radius: var(--r-ctl); cursor: pointer; font-weight: 500; line-height: 1.2; }
+.btn:hover { border-color: #C9D0D8; background: var(--sunken); }
+.btn.primary { background: var(--act); border-color: var(--act); color: #fff; }
+.btn.primary:hover { background: #2337A6; }
+.btn.pay { background: var(--paid); border-color: var(--paid); color: #fff; font-weight: 600; }
+.btn.pay:hover { background: #086244; }
+.btn.danger { color: var(--esc); }
+.btn.danger:hover { background: var(--esc-bg); border-color: #F0C9C4; }
+.btn.link { border: 0; background: none; padding: 0; color: var(--act); font-weight: 500; }
+.btn.link:hover { text-decoration: underline; background: none; }
+.btn[disabled] { opacity: .55; cursor: progress; }
+
+/* brand mark: the rupee, the thing this desk is about */
+.mark { width: 30px; height: 30px; border-radius: 8px; display: inline-grid; place-items: center; background: #F2F4F7; color: var(--ink); font-weight: 700; font-size: 17px; flex: none; }
+
+/* sign-in */
+.signin { min-height: 100%; display: grid; place-items: center; padding: 24px; background: var(--ink); }
+.signin form { width: min(420px, 100%); background: var(--surface); border-radius: 16px; padding: 36px 34px 32px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.signin .signin-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 26px; font-weight: 600; }
+.signin .signin-brand .mark { background: var(--ink); color: #fff; }
+.signin .signin-brand small { color: var(--muted); font-weight: 400; }
+.signin h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -.015em; }
+.signin p { color: var(--muted); margin: 0 0 22px; }
+.field { display: grid; gap: 6px; margin-bottom: 18px; }
+.field span { font-weight: 600; font-size: 13px; }
+.field input, .field textarea { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; background: #fff; width: 100%; }
+.field input:focus, .field textarea:focus { border-color: var(--act); outline: none; box-shadow: 0 0 0 3px var(--act-bg); }
+.field textarea { min-height: 88px; resize: vertical; }
+.field small { color: var(--muted); font-size: 12.5px; }
+.form-error { background: var(--esc-bg); color: var(--esc); border-radius: var(--r-ctl); padding: 10px 12px; margin-bottom: 16px; font-size: 13.5px; }
+
+/* shell */
+.app { display: grid; grid-template-rows: auto auto 1fr; height: 100%; }
+.topbar { display: flex; align-items: center; gap: 22px; padding: 0 24px; height: 58px; background: var(--ink); color: #E6EAF0; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15.5px; white-space: nowrap; }
+.brand small { font-weight: 400; color: #98A3B1; font-size: 13px; }
+.views { display: inline-flex; gap: 2px; background: rgba(255,255,255,.07); border-radius: 9px; padding: 3px; }
+.views button { border: 0; background: none; padding: 6px 13px; border-radius: 7px; cursor: pointer; color: #AEB7C3; font-weight: 500; font-size: 13.5px; }
+.views button:hover { color: #fff; }
+.views button[aria-pressed="true"] { background: rgba(255,255,255,.14); color: #fff; }
+.health { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; min-width: 0; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; background: rgba(255,255,255,.07); color: #CDD4DD; white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #8C96A3; flex: none; }
+.pill.ok::before { background: #3FC79A; } .pill.warn::before { background: #F0B44C; } .pill.bad::before { background: #FF7A6E; }
+.pill.bad { color: #FFD9D4; background: rgba(255,122,110,.12); }
+.who { margin-left: auto; display: flex; gap: 10px; align-items: center; white-space: nowrap; font-size: 13.5px; }
+.who .avatar { background: var(--act); color: #fff; }
+.who .btn.link { color: #AEB7C3; font-size: 13px; }
+.who .btn.link:hover { color: #fff; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 600; font-size: 12px; flex: none; letter-spacing: .02em; }
+.avatar.lg { width: 48px; height: 48px; font-size: 16px; }
+.t0 { background: #E3E9F7; color: #2D44C2; } .t1 { background: #E2F2EC; color: #0B6B4C; } .t2 { background: #FBEBDD; color: #8A4B12; }
+.t3 { background: #EFE5F6; color: #6B3E8E; } .t4 { background: #E1EFF4; color: #1F5F75; } .t5 { background: #F3E6E6; color: #8A3434; }
+
+.banner { display: flex; align-items: center; gap: 14px; padding: 10px 24px; background: var(--wait-bg); color: #5E3A00; border-bottom: 1px solid #F1DDB2; box-shadow: inset 4px 0 0 #E2A33A; font-size: 13.5px; }
+.banner.bad { background: var(--esc-bg); color: #6E1F19; border-color: #F2CFCA; box-shadow: inset 4px 0 0 var(--esc); }
+.banner .grow { flex: 1; }
+.banner b { font-weight: 600; }
+.banner code { background: rgba(0,0,0,.06); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+.banner .btn { padding: 5px 12px; font-size: 13px; background: rgba(255,255,255,.7); }
+
+.main { display: grid; grid-template-columns: 372px 1fr; min-height: 0; }
+@media (max-width: 1100px) { .health .pill:nth-child(n+3) { display: none; } }
+@media (max-width: 960px) { .main { grid-template-columns: minmax(0, 1fr); } .queue { max-height: 46vh; } .health { display: none; } .brand small { display: none; } }
+/* Nothing inside a column may push the page wider than the screen. */
+.main > *, .case-inner, .insights-inner { min-width: 0; }
+.views button { white-space: nowrap; }
+@media (max-width: 640px) {
+  .topbar { gap: 12px; padding: 0 14px; }
+  .brand { font-size: 0; gap: 0; }               /* the mark alone carries the brand on phones */
+  #who-name { display: none; }
+  .case, .insights { padding: 20px 14px 48px; }
+  .case-head h2 { font-size: 22px; }
+  .case-meta { gap: 18px; }
+  .slip-head { padding: 18px 16px 12px; }
+  .slip-amount, .slip-amount small { text-align: left; } .slip-amount { font-size: 32px; }
+  .slip .total, .slip-actions { padding-left: 16px; padding-right: 16px; }
+  .slip .why, .slip .guide { margin-left: 16px; margin-right: 16px; }
+  .slip-actions .note { margin-left: 0; }
+  /* wide tables scroll inside their card instead of squeezing or stretching the page */
+  .slip table, .panel table.grid { display: block; overflow-x: auto; white-space: nowrap; }
+  .slip th, .slip td, table.grid th, table.grid td { padding-left: 14px; padding-right: 14px; }
+  .msg { max-width: 88%; }
+  .headlines li { font-size: 19px; }
+  .tabs .count { font-size: 19px; }
+}
+
+/* queue */
+.queue { background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); padding: 0 8px; }
+.tabs button { border: 0; background: none; padding: 14px 6px 11px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); text-align: center; }
+.tabs button:hover { color: var(--text); }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--ink); }
+.tabs .count { display: block; font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.15; letter-spacing: -.01em; }
+.tabs .sub { display: block; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.tabs .amt { display: block; font-size: 12px; color: var(--wait); font-weight: 600; min-height: 1.2em; }
+.search { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.search input { width: 100%; border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 11px 8px 33px; background: var(--sunken) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238C96A3' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m14 14-3.5-3.5'/%3E%3C/svg%3E") no-repeat 11px center; }
+.search input:focus { outline: none; border-color: var(--act); background-color: #fff; box-shadow: 0 0 0 3px var(--act-bg); }
+.list { overflow: auto; flex: 1; }
+.row { display: grid; grid-template-columns: 36px 1fr auto; gap: 1px 12px; padding: 13px 16px; border-bottom: 1px solid var(--line-soft); cursor: pointer; box-shadow: inset 3px 0 0 transparent; align-items: center; }
+.row .avatar { grid-row: 1 / span 2; width: 36px; height: 36px; align-self: start; }
+.row:hover { background: var(--sunken); }
+.row[aria-current="true"] { background: #F3F5FC; box-shadow: inset 3px 0 0 var(--act); }
+.row .name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .name span { color: var(--faint); font-weight: 500; font-size: 12.5px; margin-left: 4px; }
+.row .amt { font-weight: 700; font-size: 15px; text-align: right; }
+.row .why { color: var(--muted); font-size: 13px; grid-column: 2 / 3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .age { color: var(--faint); font-size: 12px; text-align: right; white-space: nowrap; }
+.row.approval .amt { color: var(--wait); }
+.row.escalation .tag { color: var(--esc); font-weight: 600; font-size: 13px; }
+.empty { padding: 30px 20px; color: var(--muted); }
+.empty b { display: block; color: var(--text); margin-bottom: 3px; font-weight: 600; }
+
+/* case */
+.case { overflow: auto; min-height: 0; padding: 28px 36px 56px; }
+.case-inner { max-width: 1040px; }
+.case-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+.case-head h2 { margin: 0; font-size: 26px; letter-spacing: -.02em; line-height: 1.1; }
+.case-head .rid { color: var(--muted); font-size: 14px; display: block; margin-top: 3px; }
+.case-meta { color: var(--muted); margin: 14px 0 24px; display: flex; gap: 28px; flex-wrap: wrap; font-size: 13px; }
+.case-meta b { display: block; color: var(--text); font-weight: 700; font-size: 17px; }
+
+/* the payout slip: the one bold element */
+.slip { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 20px; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+.slip.approval::before, .slip.escalation::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: #E2A33A; }
+.slip.escalation::before { background: var(--esc); }
+.slip-head { display: flex; justify-content: space-between; gap: 20px; padding: 22px 24px 14px; flex-wrap: wrap; }
+.slip-title { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.slip-sub { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.slip-amount { font-size: 38px; font-weight: 700; letter-spacing: -.025em; color: var(--wait); line-height: 1; text-align: right; }
+.slip-amount small { display: block; font-size: 12.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-top: 7px; }
+.slip table { width: 100%; border-collapse: collapse; }
+.slip th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12.5px; padding: 9px 24px; border-top: 1px solid var(--line); background: var(--sunken); }
+.slip td { padding: 11px 24px; border-top: 1px solid var(--line-soft); }
+.slip td.num, .slip th.num { text-align: right; }
+.slip td.owed { font-weight: 700; }
+.slip .tear { border-top: 2px dashed var(--line); margin: 0 16px; }
+.slip .total { display: flex; justify-content: space-between; padding: 13px 24px; font-weight: 700; font-size: 15px; }
+.slip .why { margin: 0 24px 18px; padding: 11px 14px; background: var(--wait-bg); color: #5E3A00; border-radius: var(--r-ctl); font-size: 13.5px; }
+.slip.escalation .why { background: var(--esc-bg); color: #6E1F19; }
+.slip .guide { margin: 0 24px 18px; font-size: 14px; }
+.slip .guide b { font-weight: 600; }
+.slip-actions { display: flex; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--line); align-items: center; flex-wrap: wrap; background: var(--sunken); }
+.slip-actions .note { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+
+/* panels */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); margin-bottom: 20px; box-shadow: var(--shadow); overflow: hidden; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line-soft); gap: 12px; flex-wrap: wrap; }
+.panel-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.panel-head .muted { color: var(--muted); font-size: 13px; }
+.seg { display: inline-flex; background: var(--canvas); border-radius: var(--r-ctl); padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; padding: 4px 10px; cursor: pointer; color: var(--muted); font-size: 12.5px; border-radius: 6px; font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(22,32,43,.12); }
+
+.chat { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 74%; padding: 10px 13px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg .who-label { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+.msg.in { align-self: flex-start; background: var(--canvas); border-top-left-radius: 4px; }
+.msg.out { align-self: flex-end; background: var(--act-bg); border-top-right-radius: 4px; }
+.msg.out .who-label { color: var(--act); }
+.msg .meta { display: block; font-size: 12px; color: var(--muted); margin-top: 5px; }
+.msg .meta .flag { color: var(--wait); font-weight: 600; }
+
+table.grid { width: 100%; border-collapse: collapse; }
+table.grid th { text-align: left; white-space: nowrap; font-weight: 500; color: var(--muted); font-size: 12.5px; padding: 9px 20px; background: var(--sunken); border-bottom: 1px solid var(--line-soft); }
+table.grid td { padding: 11px 20px; border-top: 1px solid var(--line-soft); vertical-align: top; }
+table.grid tbody tr:first-child td { border-top: 0; }
+.status { font-weight: 600; font-size: 13px; }
+.status.paid { color: var(--paid); } .status.pending, .status.retrying { color: var(--wait); } .status.failed, .status.stuck { color: var(--esc); }
+
+/* timeline, as one connected line per message */
+.tl { padding: 6px 20px 18px; }
+.tl-group { padding: 14px 0 6px; position: relative; }
+.tl-group + .tl-group { border-top: 1px solid var(--line-soft); }
+.tl-group::before { content: ""; position: absolute; left: 4px; top: 44px; bottom: 16px; width: 2px; background: var(--line); }
+.tl-when { color: var(--faint); font-size: 12px; margin-bottom: 6px; font-weight: 500; }
+.step { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; padding: 5px 0; align-items: start; position: relative; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: #C3CAD3; box-shadow: 0 0 0 3px var(--surface); position: relative; z-index: 1; }
+.step.money .dot { background: var(--paid); } .step.decision .dot { background: var(--act); }
+.step.wait .dot { background: #E2A33A; } .step.esc .dot { background: var(--esc); }
+.step.error .dot { background: var(--esc); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--esc-bg); }
+.step.error .text { color: var(--esc); }
+.step.rider .text { font-weight: 600; }
+.step .detail-btn { font-size: 12px; color: var(--faint); }
+.step .detail-btn:hover { color: var(--act); }
+.step pre { grid-column: 2 / -1; margin: 4px 0 8px; background: var(--sunken); border: 1px solid var(--line-soft); border-radius: var(--r-ctl); padding: 10px 12px; font-size: 12px; overflow: auto; max-height: 280px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* dialog & toast */
+dialog { border: 0; border-radius: 14px; padding: 0; width: min(500px, calc(100% - 32px)); color: var(--text); box-shadow: 0 30px 80px rgba(22, 32, 43, .3); }
+dialog.wide { width: min(720px, calc(100% - 32px)); }
+dialog::backdrop { background: rgba(22, 32, 43, .5); }
+dialog form, dialog .dlg-body { padding: 26px; }
+dialog h3 { margin: 0 0 6px; font-size: 19px; letter-spacing: -.01em; }
+dialog p { margin: 0 0 16px; color: var(--muted); }
+.dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+
+/* view switch (kept for structure; styled in the top bar) */
+/* insights */
+.insights { overflow: auto; padding: 32px 36px 64px; }
+.insights-inner { max-width: 1080px; margin: 0 auto; }
+.ins-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.ins-top h2 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+.ins-top .muted { color: var(--muted); font-size: 13px; }
+.headlines { list-style: none; margin: 0 0 30px; padding: 0 0 26px; display: grid; gap: 16px; border-bottom: 1px solid var(--line); }
+.headlines li { font-size: 23px; line-height: 1.3; letter-spacing: -.015em; max-width: 60ch; }
+.headlines b { font-weight: 700; }
+.headlines .sub { display: block; font-size: 14px; color: var(--muted); letter-spacing: 0; margin-top: 4px; line-height: 1.5; }
+.moneybar { display: flex; height: 24px; border-radius: 6px; overflow: hidden; background: var(--canvas); margin: 16px 20px 12px; gap: 2px; }
+.moneybar span { display: block; height: 100%; min-width: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 0 20px 18px; font-size: 13.5px; }
+.legend div { display: flex; align-items: center; gap: 8px; }
+.legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.legend b { font-weight: 600; }
+.legend small { color: var(--muted); }
+.c-auto { background: var(--paid); } .c-approved { background: #5BB08F; } .c-sending { background: #E9B44C; }
+.c-waiting { background: #C47B12; } .c-rejected { background: var(--faint); } .c-stuck { background: var(--esc); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 960px) { .cols { grid-template-columns: 1fr; } }
+.cols .panel { margin-bottom: 0; }
+.cols + .panel, .panel + .cols, .cols + .cols { margin-top: 20px; }
+.meter { height: 8px; border-radius: 4px; background: var(--canvas); overflow: hidden; display: flex; min-width: 90px; gap: 1px; }
+.meter span { display: block; height: 100%; }
+.split-right { background: var(--paid); } .split-wrong { background: #B3BBC5; } .split-other { background: var(--line); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.fact { padding: 16px 20px; border-top: 1px solid var(--line-soft); }
+.fact b { display: block; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.fact span { color: var(--muted); font-size: 13px; }
+.panel-note { padding: 2px 20px 16px; color: var(--muted); font-size: 12.5px; }
+
+.toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px; max-width: min(560px, calc(100% - 32px)); box-shadow: 0 12px 34px rgba(0,0,0,.25); font-weight: 500; }
+.toast.bad { background: var(--esc); }
+.toast.good { background: var(--paid); }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: rise .18s ease-out; }
+  @keyframes rise { from { transform: translate(-50%, 8px); opacity: 0; } }
+}
+</style>
+</head>
+<body>
+
+<!-- Sign-in -->
+<div class="signin" id="signin" hidden>
+  <form id="signin-form" novalidate>
+    <div class="signin-brand"><span class="mark" aria-hidden="true">₹</span>Payout desk <small>QuickDrop</small></div>
+    <h1>Sign in</h1>
+    <p>Review riders' payout disputes and approve payments.</p>
+    <div class="form-error" id="signin-error" role="alert" hidden></div>
+    <label class="field">
+      <span>Your name</span>
+      <input id="signin-name" autocomplete="name" required maxlength="60">
+      <small>Recorded against every approval and rejection you make.</small>
+    </label>
+    <label class="field">
+      <span>Ops token</span>
+      <input id="signin-token" type="password" autocomplete="current-password" required>
+      <small>It's the <b>OPS_TOKEN</b> value in the server's .env file.</small>
+    </label>
+    <button class="btn primary" style="width:100%" id="signin-btn">Sign in</button>
+  </form>
+</div>
+
+<!-- App -->
+<div class="app" id="app" hidden>
+  <header class="topbar">
+    <div class="brand"><span class="mark" aria-hidden="true">₹</span>Payout desk<small>QuickDrop</small></div>
+    <nav class="views" aria-label="View"><button data-view="queue" aria-pressed="true">Work queue</button><button data-view="insights" aria-pressed="false">Insights</button></nav>
+    <div class="health" id="health" aria-live="polite"></div>
+    <div class="who"><span class="avatar" id="who-avatar" aria-hidden="true"></span><span id="who-name"></span><button class="btn link" id="signout">Sign out</button></div>
+  </header>
+  <div id="banners"></div>
+  <div class="main">
+    <aside class="queue" aria-label="Work queue">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-tab="approval" aria-selected="true"><span class="count" id="c-approval">0</span><span class="sub" id="s-approval">To approve</span><span class="amt" id="a-approval"></span></button>
+        <button role="tab" data-tab="escalation" aria-selected="false"><span class="count" id="c-escalation">0</span><span class="sub">Escalations</span><span class="amt"></span></button>
+        <button role="tab" data-tab="riders" aria-selected="false"><span class="count" id="c-riders">0</span><span class="sub">Conversations</span><span class="amt"></span></button>
+      </div>
+      <div class="search"><label class="sr" for="q">Search riders</label><input id="q" placeholder="Search rider name or ID  ( / )" autocomplete="off"></div>
+      <div class="list" id="list" role="list"></div>
+    </aside>
+    <main class="case" id="case" aria-live="polite">
+      <div class="case-inner" id="case-inner"></div>
+    </main>
+  </div>
+  <section class="insights" id="insights" hidden aria-label="Insights"><div class="insights-inner" id="insights-inner"></div></section>
+</div>
+
+<!-- Confirm dialog -->
+<dialog id="dlg">
+  <form method="dialog" id="dlg-form">
+    <h3 id="dlg-title"></h3>
+    <p id="dlg-body"></p>
+    <label class="field"><span id="dlg-label">Note</span><textarea id="dlg-note" maxlength="500"></textarea><small id="dlg-hint"></small></label>
+    <div class="form-error" id="dlg-error" role="alert" hidden></div>
+    <div class="dialog-actions">
+      <button class="btn" value="cancel" formnovalidate id="dlg-cancel">Cancel</button>
+      <button class="btn" value="ok" id="dlg-ok"></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="recon-dlg" class="wide" aria-labelledby="recon-title"><div class="dlg-body" id="recon-body"></div></dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+'use strict';
+// ---------- helpers ----------
+const $ = (s, r = document) => r.querySelector(s);
+const h = (tag, attrs = {}, ...kids) => {   // textContent only: rider text can never become HTML
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) n.append(k instanceof Node ? k : String(k));
+  return n;
+};
+// replaceChildren() turns null into the text "null", so optional sections go through this.
+const fill = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
+const initials = name => (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+const tint = id => 't' + ([...String(id)].reduce((a, c) => a + c.charCodeAt(0), 0) % 6);
+const avatar = (name, id, cls = '') => h('span', { class: `avatar ${tint(id)} ${cls}`, 'aria-hidden': 'true' }, initials(name));
+const rupees = n => '₹' + Number(n || 0).toLocaleString('en-IN');
+const day = iso => iso ? new Date(iso + (iso.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
+const when = iso => iso ? new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+const ago = iso => {
+  if (!iso) return '';
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  return Math.floor(s / 86400) + ' d ago';
+};
+
+const CATEGORY = {
+  records_dispute: ['Disputes our records', 'The rider still disagrees after the agent re-checked. Compare with the trips system; if our export is wrong, pay the difference manually.'],
+  distance_dispute: ['Says the distance is wrong', 'Check the GPS route for the order. If the distance was under-recorded, pay the difference manually.'],
+  penalty_waiver_request: ['Asks to waive a penalty', 'Policy charges ₹10 when a rider cancels. Decide whether the reason given justifies an exception.'],
+  suspicious: ['Suspicious message', 'Impersonation or an attempt to manipulate the assistant. No money moved. Review the message and the account.'],
+  trip_not_on_account: ["Asked about someone else's order", "The order isn't on this rider's account. Check for a typo or misuse."],
+  out_of_window_shortfall: ['Shortfall older than 7 days', 'A real shortfall exists but is outside the dispute window. Decide whether to pay it as an exception.'],
+  rider_requested_human: ['Wants to talk to a person', 'Contact the rider directly.'],
+  payout_stuck: ["Payout couldn't be completed", 'PaySwift kept failing. Check the payout below in PaySwift before paying manually, so the rider is not paid twice.'],
+  payout_failed: ['Payout was refused', 'PaySwift rejected the request. Check the error on the payout below.'],
+  message_flood: ['Too many messages', 'The rider sent more messages in an hour than the limit, so the agent stopped acting for them. Read the conversation and reply directly.'],
+  internal_error: ['Agent error', 'The assistant hit an error. Read what it did below and reply to the rider manually.'],
+  other: ['Needs a person', 'Read the conversation below.'],
+};
+const ISSUE = {
+  missing_payment: () => 'Not paid',
+  surge_not_applied: d => `${d.surge}x surge not applied`,
+  fare_mismatch: d => `Wrong fare for ${d.distance_km} km`,
+  duplicate_penalty: () => 'Penalty charged twice',
+  penalty_mismatch: () => 'Wrong penalty',
+  missing_incentive: d => `Daily incentive missing (${d.completed_trips} trips)`,
+};
+const PLANNER = p => !p ? '' : p.startsWith('llm:') ? 'Written by the LLM' : p === 'rules(fallback)' ? 'Template reply: LLM unavailable'
+  : p === 'rate_limited' ? 'Holding reply: too many messages' : 'Template reply';
+const approvalWhy = reason => {
+  const r = (reason || '').replace(/^Payout for [\d-]+ needs approval:\s*/, '');
+  return r.split('; ').map(x => x
+    .replace(/^₹(\d+) is above the ₹(\d+) auto-pay limit$/, 'More than the ₹$2 the agent may pay on its own')
+    .replace(/^rider already received an automatic payout today.*$/, 'This rider already got an automatic payout today (limit: one a day)')
+    .replace(/^could not verify past payouts in PaySwift$/, "The agent couldn't check earlier payouts in PaySwift")
+    .replace(/^auto-pay is switched off$/, 'Automatic payouts are switched off')
+    .replace(/^shadow mode, the agent would have paid ₹(\d+) automatically$/, 'Shadow mode: the agent would have paid ₹$1 by itself')
+    .replace(/^the daily auto-pay budget of ₹(\d+) is used up.*$/, "Today's ₹$1 budget for automatic payouts is used up")
+  ).join('. ') + '.';
+};
+
+// ---------- state ----------
+const S = { token: '', name: '', tab: 'approval', items: [], riders: [], summary: null, recon: null, rider: null, selectedItem: null, traceFilter: 'all', open: new Set() };
+try { S.token = sessionStorage.getItem('opsToken') || ''; S.name = sessionStorage.getItem('opsName') || ''; } catch (e) {}
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + S.token, ...(opts.headers || {}) } });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 401 || res.status === 403) {
+    if (path !== '/ops/api/session') signOut(body.detail || 'Your session ended. Sign in again.');
+    const e = new Error(body.detail || 'Not signed in'); e.status = res.status; throw e;
+  }
+  if (!res.ok) { const e = new Error(body.detail || `Request failed (${res.status})`); e.status = res.status; throw e; }
+  return body;
+}
+
+let toastTimer;
+function toast(msg, kind = '') {
+  const t = $('#toast'); t.textContent = msg; t.className = 'toast ' + kind; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, kind === 'bad' ? 7000 : 4500);
+}
+
+// ---------- sign-in ----------
+function showSignin(error) {
+  $('#app').hidden = true; $('#signin').hidden = false;
+  $('#signin-name').value = S.name;
+  const e = $('#signin-error'); e.hidden = !error; e.textContent = error || '';
+  (S.name ? $('#signin-token') : $('#signin-name')).focus();
+}
+function signOut(reason) {
+  S.token = ''; try { sessionStorage.removeItem('opsToken'); } catch (e) {}
+  clearInterval(S.timer); showSignin(reason);
+}
+$('#signin-form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const token = $('#signin-token').value.trim(), name = $('#signin-name').value.trim();
+  const err = $('#signin-error');
+  if (!token || !name) { err.hidden = false; err.textContent = !token ? 'Enter the ops token.' : 'Enter your name.'; return; }
+  const btn = $('#signin-btn'); btn.disabled = true; btn.textContent = 'Checking…';
+  S.token = token; S.name = name;
+  try {
+    await api('/ops/api/session');
+    try { sessionStorage.setItem('opsToken', token); sessionStorage.setItem('opsName', name); } catch (e) {}
+    $('#signin-token').value = '';
+    start();
+  } catch (e) {
+    S.token = ''; err.hidden = false;
+    err.textContent = e.status ? e.message : "Can't reach the server. Check the service is running.";
+  } finally { btn.disabled = false; btn.textContent = 'Sign in'; }
+});
+$('#signout').addEventListener('click', () => signOut());
+
+// ---------- data ----------
+async function refresh() {
+  const [items, riders, summary] = await Promise.all([
+    api('/ops/api/items?status=pending'), api('/ops/api/riders'), api('/ops/api/summary')]);
+  S.items = items; S.riders = riders; S.summary = summary;
+  renderHealth(); renderQueue();
+  if (S.rider) await openRider(S.rider.rider.rider_id, S.selectedItem, true);
+  api('/ops/api/reconciliation').then(r => { S.recon = r; renderHealth(); }).catch(() => { S.recon = { unreachable: true }; renderHealth(); });
+}
+async function start() {
+  $('#signin').hidden = true; $('#app').hidden = false; $('#who-name').textContent = S.name; $('#who-avatar').textContent = initials(S.name);
+  try { await refresh(); } catch (e) { if (e.status !== 401 && e.status !== 403) toast(e.message, 'bad'); return; }
+  if (!S.rider) renderWelcome();
+  clearInterval(S.timer);
+  S.timer = setInterval(() => { refresh().catch(() => {}); if (S.view === 'insights') loadInsights(); }, 15000);
+}
+
+// ---------- header ----------
+function renderHealth() {
+  const sm = S.summary; if (!sm) return;
+  const pills = [];
+  const pill = (cls, text, title) => h('span', { class: 'pill ' + cls, title }, text);
+  const r = S.recon;
+  if (!r) pills.push(pill('', 'PaySwift: checking'));
+  else if (r.unreachable) pills.push(pill('bad', 'PaySwift unreachable', 'GET /ops/api/reconciliation failed'));
+  else if (r.ok) pills.push(pill('ok', 'PaySwift in sync', `Every payout we made matches PaySwift (${r.matched} of ${r.intents})`));
+  else pills.push(pill('bad', 'PaySwift mismatch', 'Our records and PaySwift disagree. See the banner for details.'));
+  const ag = sm.agent;
+  const llm = ag.configured.startsWith('llm:');
+  if (!llm) pills.push(pill('', 'Templates only', 'No LLM configured; replies use templates'));
+  else if (ag.llm_failures > 0) pills.push(pill('warn', `LLM failing ${ag.llm_failures}/${ag.recent_messages}`, `The LLM failed on ${ag.llm_failures} of the last ${ag.recent_messages} messages`));
+  else pills.push(pill('ok', 'LLM healthy', ag.configured.replace('llm:', 'Provider: ')));
+  const ap = sm.auto_pay;
+  if (ap.mode === 'shadow') {
+    const n = ap.shadow.agreed + ap.shadow.disagreed;
+    pills.push(pill('warn', n ? `Shadow mode: ${Math.round(100 * ap.shadow.agreed / n)}% agree (${ap.shadow.agreed}/${n})` : 'Shadow mode: no reviews yet',
+      'Every payout waits for ops while you measure how often you agree with the agent'));
+  } else if (!ap.enabled) pills.push(pill('warn', 'Auto-pay off'));
+  if (ap.daily_budget > 0 && ap.latest_day) {
+    const used = ap.spent_latest_day / ap.daily_budget;
+    pills.push(pill(used >= 1 ? 'bad' : used >= .8 ? 'warn' : '', `Auto-pay ${rupees(ap.spent_latest_day)} / ${rupees(ap.daily_budget)}`,
+      `Automatic payouts on ${day(ap.latest_day)} against the daily ceiling`));
+  }
+  if (sm.payouts.in_flight.count) pills.push(pill('warn', `${sm.payouts.in_flight.count} sending`, `${rupees(sm.payouts.in_flight.amount)} on its way through PaySwift`));
+  fill($('#health'), pills);
+
+  const banners = [];
+  if (llm && ag.llm_failures > 0) {
+    const auth = /auth|api key|401/i.test(ag.last_llm_error || '');
+    banners.push(h('div', { class: 'banner' }, h('span', { class: 'grow' },
+      h('b', {}, "The LLM isn't answering, so riders get template replies. "),
+      auth ? ['The provider rejected the API key: check ', h('code', {}, 'LLM_API_KEY'), ' in .env and recreate the app container.']
+           : ['Last error: ', h('code', {}, (ag.last_llm_error || 'unknown').slice(0, 140))],
+      h('span', { style: 'opacity:.75' }, ` Counted over the last ${ag.recent_messages} messages, so it clears as new replies succeed.`))));
+  }
+  if (ap.mode === 'shadow') banners.push(h('div', { class: 'banner' }, h('span', { class: 'grow' }, h('b', {}, 'Shadow mode is on. '),
+    'The agent decides every dispute, but nothing is paid until you approve it. Once the agreement rate is high enough, set ', h('code', {}, 'AUTO_PAY_MODE=live'), '.')));
+  if (ap.daily_budget > 0 && ap.spent_latest_day >= ap.daily_budget) banners.push(h('div', { class: 'banner bad' }, h('span', { class: 'grow' },
+    h('b', {}, `Today's ${rupees(ap.daily_budget)} budget for automatic payouts is used up. `), 'Every new payout now waits for approval.')));
+  if (sm.payouts.needs_attention.count) banners.push(h('div', { class: 'banner bad' }, h('span', { class: 'grow' },
+    h('b', {}, `${sm.payouts.needs_attention.count} payout${sm.payouts.needs_attention.count > 1 ? 's' : ''} (${rupees(sm.payouts.needs_attention.amount)}) couldn't be completed. `), 'They are in Escalations.')));
+  if (r && !r.ok && !r.unreachable) banners.push(h('div', { class: 'banner bad' }, h('span', { class: 'grow' },
+    h('b', {}, "Our payout records don't match PaySwift. "), 'Check the details before approving anything.'),
+    h('button', { class: 'btn', onclick: showRecon }, 'See details')));
+  fill($('#banners'), banners);
+}
+
+function showRecon() {
+  const r = S.recon || {};
+  const missing = r.paid_but_missing_in_payswift || [], unmarked = r.in_payswift_but_not_marked_paid || [];
+  const dup = r.duplicate_payouts_for_intent || [], amt = r.amount_mismatch || [], orphan = r.payswift_refs_without_intent || [];
+  const sandboxReset = missing.length && !dup.length && !amt.length && !orphan.length;
+  const rows = [
+    [missing.length, 'Marked paid here, but PaySwift has no record', 'Payouts we recorded as paid that PaySwift doesn\'t list.'],
+    [unmarked.length, 'Paid in PaySwift, not yet marked paid here', 'Usually a lost response; the worker marks these on its next pass.'],
+    [dup.length, 'Paid more than once in PaySwift', 'Serious: the same payout appears twice. Stop approvals and investigate.'],
+    [amt.length, 'Amount differs from PaySwift', 'Serious: our amount and PaySwift\'s disagree.'],
+    [orphan.length, 'Unknown payouts with our reference', 'PaySwift has payouts we have no record of.'],
+  ].filter(([n]) => n);
+  fill($('#recon-body'),
+    h('h3', { id: 'recon-title' }, "Payout records vs PaySwift"),
+    h('p', {}, `${r.intents || 0} payouts in our records, ${r.ledger_payouts || 0} in PaySwift, ${r.matched || 0} matching.`),
+    sandboxReset ? h('div', { class: 'why', style: 'margin:0 0 16px;padding:11px 14px;border-radius:8px;background:var(--wait-bg);color:#5E3A00' },
+      h('b', {}, 'Most likely cause: PaySwift was restarted. '),
+      "The sandbox keeps its ledger in memory, so a restart empties it while our database keeps its history. Run ",
+      h('code', {}, 'docker compose down -v'), ' to start both fresh. With a real provider, treat this as an incident.') : null,
+    h('table', { class: 'grid' }, h('tbody', {}, rows.map(([n, title, help]) => h('tr', {},
+      h('td', { style: 'width:56px' }, h('b', { style: 'font-size:18px' }, n)), h('td', {}, h('b', {}, title), h('div', { style: 'color:var(--muted);font-size:13px' }, help)))))),
+    missing.length ? h('p', { style: 'margin:14px 0 0;font-size:13px' }, 'Affected: ' + missing.slice(0, 8).map(m => `${m.rider_id} ${rupees(m.amount)}`).join(', ') + (missing.length > 8 ? ` and ${missing.length - 8} more` : '')) : null,
+    h('div', { class: 'dialog-actions' }, h('button', { class: 'btn primary', onclick: () => $('#recon-dlg').close() }, 'Close')));
+  $('#recon-dlg').showModal();
+}
+
+// ---------- queue ----------
+function renderQueue() {
+  const approvals = S.items.filter(i => i.type === 'approval');
+  const escalations = S.items.filter(i => i.type === 'escalation');
+  $('#c-approval').textContent = approvals.length;
+  $('#a-approval').textContent = approvals.length ? rupees(approvals.reduce((a, i) => a + i.amount, 0)) : '';
+  $('#c-escalation').textContent = escalations.length;
+  $('#c-riders').textContent = S.riders.length;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
+  const q = $('#q').value.trim().toLowerCase();
+  const match = (id, name) => !q || id.toLowerCase().includes(q) || (name || '').toLowerCase().includes(q);
+  const list = $('#list'); list.replaceChildren();
+  const cur = S.rider && S.rider.rider.rider_id;
+
+  if (S.tab === 'riders') {
+    const rows = S.riders.filter(r => match(r.rider_id, r.name));
+    if (!rows.length) return list.append(empty(q ? 'No rider matches that search.' : 'No conversations yet.', q ? '' : 'Riders appear here after their first WhatsApp message.'));
+    for (const r of rows) {
+      const bits = [];
+      if (r.pending) bits.push(`${r.pending} waiting for you`);
+      if (r.in_flight) bits.push('payout sending');
+      if (r.paid) bits.push(`${rupees(r.paid)} paid`);
+      bits.push(`${r.messages} message${r.messages === 1 ? '' : 's'}`);
+      list.append(h('div', { class: 'row', role: 'listitem', tabindex: 0, 'aria-current': String(r.rider_id === cur), onclick: () => openRider(r.rider_id), onkeydown: enter(() => openRider(r.rider_id)) },
+        avatar(r.name, r.rider_id),
+        h('div', { class: 'name' }, r.name, ' ', h('span', {}, r.rider_id)),
+        h('div', { class: 'age' }, ago(r.last_at)),
+        h('div', { class: 'why' }, bits.join(', '))));
+    }
+    return;
+  }
+  const rows = (S.tab === 'approval' ? approvals : escalations).filter(i => match(i.rider_id, i.rider_name))
+    .sort((a, b) => S.tab === 'approval' ? b.amount - a.amount || a.created_at.localeCompare(b.created_at) : a.created_at.localeCompare(b.created_at));
+  if (!rows.length) {
+    return list.append(q ? empty('Nothing matches that search.') : S.tab === 'approval'
+      ? empty('No payouts waiting for approval.', 'Payouts over the auto-pay limit, or a rider\'s second one in a day, land here.')
+      : empty('No open escalations.', 'Cases the agent can\'t settle by itself land here.'));
+  }
+  for (const it of rows) {
+    const cat = (CATEGORY[it.category] || CATEGORY.other)[0];
+    list.append(h('div', { class: `row ${it.type}`, role: 'listitem', tabindex: 0, 'aria-current': String(S.selectedItem === it.id),
+        onclick: () => openRider(it.rider_id, it.id), onkeydown: enter(() => openRider(it.rider_id, it.id)) },
+      avatar(it.rider_name || it.rider_id, it.rider_id),
+      h('div', { class: 'name' }, it.rider_name || it.rider_id, ' ', h('span', {}, it.rider_id)),
+      it.type === 'approval' ? h('div', { class: 'amt' }, rupees(it.amount)) : h('div', { class: 'age' }, ago(it.created_at)),
+      h('div', { class: 'why' }, it.type === 'approval'
+        ? `${day(it.dispute_date)}: ${approvalWhy(it.reason).replace(/\.$/, '')}`
+        : h('span', { class: 'tag' }, cat)),
+      it.type === 'approval' ? h('div', { class: 'age' }, ago(it.created_at)) : null));
+  }
+}
+const empty = (title, sub) => h('div', { class: 'empty' }, h('b', {}, title), sub || '');
+const enter = fn => e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tab; renderQueue(); }));
+$('#q').addEventListener('input', renderQueue);
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName) && !$('#app').hidden) { e.preventDefault(); $('#q').focus(); }
+});
+
+// ---------- case view ----------
+function renderWelcome() {
+  const sm = S.summary || { pending_approvals: { count: 0 }, open_escalations: { count: 0 } };
+  const a = sm.pending_approvals.count, e = sm.open_escalations.count;
+  $('#case-inner').replaceChildren(h('div', { class: 'empty', style: 'padding:40px 0' },
+    h('b', { style: 'font-size:20px;margin-bottom:6px' }, a || e ? `${a} payout${a === 1 ? '' : 's'} to approve, ${e} escalation${e === 1 ? '' : 's'} open` : 'Nothing needs you right now'),
+    a || e ? 'Pick an item on the left. You\'ll see the money breakdown, the conversation and every step the agent took.' : 'The agent is handling disputes by itself. Open Conversations to see what it did.'));
+}
+
+async function openRider(riderId, itemId, quiet) {
+  S.selectedItem = itemId || null;
+  let d;
+  try { d = await api(`/ops/api/riders/${encodeURIComponent(riderId)}`); }
+  catch (e) { if (!quiet) toast(e.message, 'bad'); return; }
+  S.rider = d;
+  renderQueue();
+  const r = d.rider;
+  const paid = d.payouts.filter(p => p.status === 'paid').reduce((a, p) => a + p.amount, 0);
+  const pending = d.ops_items.filter(i => i.status === 'pending');
+  const decided = d.ops_items.filter(i => i.status !== 'pending');
+  const order = pending.sort((a, b) => (a.id === itemId ? -1 : b.id === itemId ? 1 : a.type === 'approval' ? -1 : 1));
+
+  const parts = [
+    h('div', { class: 'case-head' }, avatar(r.name, r.rider_id, 'lg'),
+      h('div', {}, h('h2', {}, r.name), h('span', { class: 'rid' }, `${r.rider_id}, ${r.city || ''}`))),
+    h('div', { class: 'case-meta' },
+      h('span', {}, h('b', {}, rupees(paid)), 'paid by the agent'),
+      h('span', {}, h('b', {}, String(pending.length)), 'waiting for ops'),
+      h('span', {}, h('b', {}, String(d.messages.length)), `message${d.messages.length === 1 ? '' : 's'}`),
+      r.joined_on ? h('span', {}, h('b', {}, new Date(r.joined_on).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })), 'rider since') : null),
+    ...order.map(slip),
+    conversation(d), payouts(d), timeline(d),
+    decided.length ? history(decided) : null,
+  ];
+  fill($('#case-inner'), parts);
+  if (!quiet) $('#case').scrollTop = 0;
+}
+
+function slip(it) {
+  if (it.type === 'escalation') {
+    const [title, guide] = CATEGORY[it.category] || CATEGORY.other;
+    return h('section', { class: 'slip escalation', 'aria-label': 'Escalation' },
+      h('div', { class: 'slip-head' }, h('div', {}, h('div', { class: 'slip-title' }, title), h('div', { class: 'slip-sub' }, `Escalated ${ago(it.created_at)}`))),
+      h('div', { class: 'why' }, it.reason),
+      h('div', { class: 'guide' }, h('b', {}, 'What to do: '), guide),
+      h('div', { class: 'slip-actions' },
+        h('button', { class: 'btn primary', onclick: () => resolve(it) }, 'Mark as resolved'),
+        h('span', { class: 'note' }, 'Resolving closes the case; it doesn\'t message the rider.')));
+  }
+  const owed = (it.details && it.details.owed_items) || [];
+  const rows = owed.map(o => h('tr', {},
+    h('td', {}, o.trip_id || (o.key.startsWith('incentive') ? 'Daily incentive' : o.key)),
+    h('td', {}, (ISSUE[o.issue] || (() => o.issue))(o.detail || {})),
+    h('td', { class: 'num' }, rupees(o.expected)),
+    h('td', { class: 'num' }, rupees(o.paid)),
+    h('td', { class: 'num owed' }, rupees(o.difference))));
+  const sum = owed.reduce((a, o) => a + o.difference, 0);
+  const shadow = it.category === 'shadow_auto_pay';
+  return h('section', { class: 'slip approval', 'aria-label': 'Payout waiting for approval' },
+    h('div', { class: 'slip-head' },
+      h('div', {}, h('div', { class: 'slip-title' }, `Payout for ${day(it.dispute_date)}${shadow ? ', shadow mode' : ''}`),
+        h('div', { class: 'slip-sub' }, `Raised ${ago(it.created_at)}. The agent worked this out from the trips and payouts on record.`)),
+      h('div', { class: 'slip-amount' }, rupees(it.amount), h('small', {}, 'to approve'))),
+    owed.length ? h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Order'), h('th', {}, 'What went wrong'), h('th', { class: 'num' }, 'Should be'), h('th', { class: 'num' }, 'Was paid'), h('th', { class: 'num' }, 'Owed'))), h('tbody', {}, rows)) : null,
+    h('div', { class: 'tear', 'aria-hidden': 'true' }),
+    h('div', { class: 'total' }, h('span', {}, sum !== it.amount ? `Total owed ${rupees(sum)}, capped to what's owed for the whole day` : 'Total owed'), h('span', {}, rupees(it.amount))),
+    shadow ? h('div', { class: 'why' }, h('b', {}, 'The agent would have paid this by itself. '),
+        'Approve if you agree; reject if you would not have paid it. Your answer counts toward the agreement rate in the header.')
+      : h('div', { class: 'why' }, h('b', {}, 'Why it needs you: '), approvalWhy(it.reason)),
+    h('div', { class: 'slip-actions' },
+      h('button', { class: 'btn pay', onclick: () => approve(it) }, shadow ? `Agree and pay ${rupees(it.amount)}` : `Approve and pay ${rupees(it.amount)}`),
+      h('button', { class: 'btn danger', onclick: () => reject(it) }, shadow ? 'Disagree and reject' : 'Reject'),
+      h('span', { class: 'note' }, 'Amounts are re-checked against PaySwift before paying.')));
+}
+
+function conversation(d) {
+  const bubbles = [];
+  for (const m of d.messages) {
+    bubbles.push(h('div', { class: 'msg in' }, h('span', { class: 'who-label' }, 'Rider'), m.text, h('span', { class: 'meta' }, when(m.received_at), m.deliveries > 1 ? h('span', {}, `, delivered ${m.deliveries} times (handled once)`) : null)));
+    if (m.reply) bubbles.push(h('div', { class: 'msg out' }, h('span', { class: 'who-label' }, 'Agent'), m.reply, h('span', { class: 'meta' },
+      m.planner === 'rules(fallback)' ? h('span', { class: 'flag' }, PLANNER(m.planner)) : PLANNER(m.planner))));
+  }
+  return h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'Conversation')),
+    bubbles.length ? h('div', { class: 'chat' }, bubbles) : empty('No messages.'));
+}
+
+function payouts(d) {
+  if (!d.payouts.length) return null;
+  const label = { paid: 'Paid', pending: 'Sending', retrying: 'Retrying', failed: 'Failed', stuck: 'Stuck' };
+  return h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'Payouts')),
+    h('table', { class: 'grid' },
+      h('thead', {}, h('tr', {}, ...['Amount', 'For', 'How', 'Status', 'PaySwift reference'].map(x => h('th', {}, x)))),
+      h('tbody', {}, d.payouts.map(p => h('tr', {},
+        h('td', {}, h('b', {}, rupees(p.amount))), h('td', {}, day(p.dispute_date)),
+        h('td', {}, p.kind === 'auto' ? 'Automatic' : 'Approved by ops'),
+        h('td', {}, h('span', { class: `status ${p.status}` }, label[p.status] || p.status),
+          p.attempts > 1 ? h('div', { style: 'color:var(--muted);font-size:12.5px' }, `${p.attempts} attempts${p.last_error ? `, last: ${p.last_error}` : ''}`) : null),
+        h('td', {}, p.payswift_payout_id || h('span', { style: 'color:var(--faint)' }, 'not yet')))))));
+}
+
+// "What the agent did": every trace step, in plain language, raw data one click away.
+function describe(s) {
+  const i = s.input || {}, o = s.output || {};
+  const ds = x => x ? day(String(x).slice(0, 10)) : '';
+  switch (s.name) {
+    case 'rider_message': return ['rider', `Rider wrote: "${i.text}"`];
+    case 'message_understood': {
+      if (o.security_flag) return ['esc', `Flagged as ${o.security_flag.replace('_', ' ')}; the LLM never saw it`];
+      const c = (o.claims || []).map(c => `${c.issue.replace(/_/g, ' ')}${c.date ? ' on ' + ds(c.date) : ''}${c.trip_ids && c.trip_ids.length ? ' (' + c.trip_ids.join(', ') + ')' : ''}`);
+      if (c.length) return ['info', `Understood: ${c.join('; ')}`];
+      if (o.status_query || o.insist) return ['info', 'Understood: asking about the status of their payment'];
+      if (o.pushback) return ['info', 'Understood: disagrees with the previous answer'];
+      return ['info', 'No date or order in this message'];
+    }
+    case 'lookup_trip': return ['info', o.found ? `Looked up ${o.trip_id}: ${o.distance_km} km at ${o.surge}x, should pay ${rupees(o.expected)}, was paid ${rupees(o.paid)}` : `Looked up ${o.trip_id}: ${o.reason}`];
+    case 'review_day': return ['info', `Reviewed ${ds(o.date)}: ${rupees(o.expected_total)} due, ${rupees(o.paid_total)} paid`];
+    case 'case_status': return ['info', "Checked the rider's payouts and approvals"];
+    case 'payswift_list_payouts': return ['info', `Checked PaySwift: ${o.count} earlier payout${o.count === 1 ? '' : 's'} to this rider`];
+    case 'resolve_dispute': {
+      const st = { auto_paid: o.payout_status === 'paid' ? `${rupees(o.amount)} paid automatically` : `${rupees(o.amount)} approved automatically, PaySwift still sending`,
+        approval_pending: `${rupees(o.amount)} owed, waiting for ops approval`, nothing_owed: `nothing owed (${(o.reason || '').toLowerCase()})`,
+        already_handled: 'already paid or already with ops', out_of_window: 'outside the 7-day window', no_data: 'no trips on record' }[o.status] || o.status;
+      return [o.status === 'auto_paid' ? 'money' : o.status === 'approval_pending' ? 'wait' : 'decision', `Outcome for ${ds(o.date)}: ${st}`];
+    }
+    case 'auto_payout_approved': return ['money', `Decided to pay ${rupees(o.amount)} automatically (within the limits)`];
+    case 'shadow_auto_payout': return ['wait', `Shadow mode: would have paid ${rupees(o.would_auto_pay)} automatically; sent to ops instead`];
+    case 'rider_rate_limited': return ['esc', `Paused: ${i.messages_last_hour} messages in the last hour (limit ${i.limit})`];
+    case 'payout_sent_for_approval': return ['wait', `Sent ${rupees(o.amount)} to ops: ${(o.why || []).join('; ')}`];
+    case 'dispute_nothing_owed': return ['decision', `Nothing to pay for ${ds(i.date)}: ${o.reason}`];
+    case 'dispute_out_of_window': return ['decision', `${ds(i.date)} is outside the dispute window`];
+    case 'dispute_no_data': return ['decision', `No trips or payouts on record for ${ds(i.date)}`];
+    case 'payswift_create_payout': return o.outcome === 'paid' ? ['money', `PaySwift accepted ${rupees(i.amount)} (attempt ${i.attempt})`]
+      : ['error', `PaySwift attempt ${i.attempt} for ${rupees(i.amount)} didn't go through (${o.error || o.status_code}); will retry safely`];
+    case 'payout_confirmed': return ['money', `PaySwift confirmed ${rupees(o.amount)} (${o.payout_id})${i.via === 'ledger_reconciliation' ? ', found in the ledger after a lost response' : ''}`];
+    case 'escalated_to_ops': return ['esc', `Escalated to ops: ${(CATEGORY[i.category] || CATEGORY.other)[0].toLowerCase()}${o.new === false ? ' (already open)' : ''}`];
+    case 'duplicate_delivery': return ['info', 'Same message delivered again; sent the stored reply'];
+    case 'llm_failed': return ['error', `LLM failed (${o.error}); the rules planner answered instead`];
+    case 'llm_reply_rejected': return ['error', `LLM reply blocked by the safety check (${(o.problems || []).join('; ')}); sent a template reply`];
+    case 'ops_approved_payout': return ['money', `${i.actor} approved ${rupees(o.amount)}`];
+    case 'ops_rejected_payout': return ['decision', `${i.actor} rejected ${rupees(o.amount)}${i.note ? ': ' + i.note : ''}`];
+    case 'ops_approval_voided': return ['decision', `Approval cancelled on re-check: nothing is owed any more`];
+    case 'ops_resolved_escalation': return ['decision', `${i.actor} resolved the escalation${i.note ? ': ' + i.note : ''}`];
+    case 'reply_sent': return ['info', `Replied: "${typeof s.output === 'string' ? s.output : ''}"`];
+    case 'unknown_rider': return ['error', 'Message from a number with no rider account'];
+    default: return [s.type === 'error' ? 'error' : 'info', s.name.replace(/_/g, ' ')];
+  }
+}
+
+function timeline(d) {
+  const f = S.traceFilter;
+  const keep = k => f === 'all' || (f === 'money' && ['money', 'wait', 'decision', 'esc'].includes(k)) || (f === 'problems' && ['error', 'esc'].includes(k));
+  const groups = [];
+  let cur = null;
+  d.trace.forEach((s, idx) => {
+    if (!cur || s.message_id !== cur.id) { cur = { id: s.message_id, at: s.at, steps: [] }; groups.push(cur); }
+    cur.steps.push([s, idx]);
+  });
+  const body = [];
+  for (const g of groups) {
+    const steps = g.steps.map(([s, idx]) => {
+      const [kind, text] = describe(s);
+      if (!keep(kind)) return null;
+      const key = `${d.rider.rider_id}:${idx}`;
+      const open = S.open.has(key);
+      const node = h('div', { class: `step ${kind}` }, h('span', { class: 'dot', 'aria-hidden': 'true' }), h('span', { class: 'text' }, text),
+        h('button', { class: 'btn link detail-btn', 'aria-expanded': String(open), onclick: () => { open ? S.open.delete(key) : S.open.add(key); openRider(d.rider.rider_id, S.selectedItem, true); } }, open ? 'Hide data' : 'Data'));
+      if (open) node.append(h('pre', {}, JSON.stringify({ type: s.type, step: s.name, at: s.at, input: s.input, output: s.output }, null, 2)));
+      return node;
+    }).filter(Boolean);
+    if (steps.length) body.push(h('div', { class: 'tl-group' }, h('div', { class: 'tl-when' }, when(g.at)), steps));
+  }
+  const seg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Filter steps' },
+    ...[['all', 'Everything'], ['money', 'Money and decisions'], ['problems', 'Problems']].map(([k, label]) =>
+      h('button', { 'aria-pressed': String(f === k), onclick: () => { S.traceFilter = k; openRider(d.rider.rider_id, S.selectedItem, true); } }, label)));
+  return h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'What the agent did'), seg),
+    body.length ? h('div', { class: 'tl' }, body) : empty(f === 'problems' ? 'No problems for this rider.' : 'Nothing to show.'));
+}
+
+function history(items) {
+  return h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'Earlier decisions')),
+    h('table', { class: 'grid' }, h('tbody', {}, items.map(i => h('tr', {},
+      h('td', {}, i.type === 'approval' ? `Payout ${rupees(i.amount)} for ${day(i.dispute_date)}` : (CATEGORY[i.category] || CATEGORY.other)[0]),
+      h('td', {}, h('span', { class: `status ${i.status === 'approved' ? 'paid' : ''}` }, i.status[0].toUpperCase() + i.status.slice(1)),
+        i.decided_by ? ` by ${i.decided_by}` : ''),
+      h('td', { style: 'color:var(--muted)' }, i.decision_note || ''),
+      h('td', { style: 'color:var(--muted)' }, when(i.decided_at)))))));
+}
+
+// ---------- actions ----------
+function ask({ title, body, label, hint, ok, okClass, required }) {
+  const dlg = $('#dlg');
+  $('#dlg-title').textContent = title; $('#dlg-body').textContent = body;
+  $('#dlg-label').textContent = label; $('#dlg-hint').textContent = hint || '';
+  $('#dlg-note').value = ''; $('#dlg-note').required = !!required;
+  $('#dlg-error').hidden = true;
+  const okBtn = $('#dlg-ok'); okBtn.textContent = ok; okBtn.className = 'btn ' + okClass;
+  return new Promise(resolve => {
+    const onClose = () => { dlg.removeEventListener('close', onClose); resolve(dlg.returnValue === 'ok' ? $('#dlg-note').value.trim() : null); };
+    okBtn.onclick = e => {
+      if (required && !$('#dlg-note').value.trim()) { e.preventDefault(); const er = $('#dlg-error'); er.hidden = false; er.textContent = 'Add a reason so the case history explains this decision.'; $('#dlg-note').focus(); }
+    };
+    dlg.addEventListener('close', onClose);
+    dlg.returnValue = '';  // Esc must never reuse the previous dialog's "ok"
+    dlg.showModal(); (required ? $('#dlg-note') : okBtn).focus();
+  });
+}
+
+async function decide(it, action, note, busyText) {
+  toast(busyText);
+  try {
+    const res = await api(`/ops/items/${encodeURIComponent(it.id)}/${action}`, { method: 'POST', body: JSON.stringify({ actor: S.name, note: note || null }) });
+    if (!res.changed) toast(`Already ${res.status} by someone else. Nothing changed.`);
+    else if (action === 'approve' && res.status === 'approved')
+      toast(res.payout_status === 'paid' ? `Paid ${rupees(res.validation.approved_amount)} to ${it.rider_name || it.rider_id}.`
+        : `Approved ${rupees(res.validation.approved_amount)}. PaySwift is slow right now; it will show as paid shortly.`, 'good');
+    else if (action === 'approve') toast(`Not paid: after re-checking, nothing is owed any more (it was already paid).`);
+    else if (action === 'reject') toast(`Rejected the ${rupees(it.amount)} payout.`);
+    else toast('Escalation resolved.');
+    if (S.tab !== 'riders') S.selectedItem = null;
+    await refresh();
+  } catch (e) { if (e.status !== 401 && e.status !== 403) toast(e.message, 'bad'); }
+}
+
+async function approve(it) {
+  const note = await ask({ title: `Pay ${rupees(it.amount)} to ${it.rider_name || it.rider_id}?`,
+    body: 'Before paying, the system re-checks the trips and PaySwift and pays only what is still owed. This sends real money.',
+    label: 'Note (optional)', ok: `Pay ${rupees(it.amount)}`, okClass: 'pay' });
+  if (note !== null) decide(it, 'approve', note, 'Paying…');
+}
+async function reject(it) {
+  const note = await ask({ title: `Reject the ${rupees(it.amount)} payout?`, body: "The rider won't be paid for these items, and the agent won't raise them again.",
+    label: 'Reason', hint: 'Shown in the case history.', ok: 'Reject payout', okClass: 'primary', required: true });
+  if (note !== null) decide(it, 'reject', note, 'Rejecting…');
+}
+async function resolve(it) {
+  const note = await ask({ title: 'Mark this escalation as resolved?', body: (CATEGORY[it.category] || CATEGORY.other)[0],
+    label: 'What did you do?', hint: 'For example: called the rider, paid ₹40 manually.', ok: 'Mark as resolved', okClass: 'primary', required: true });
+  if (note !== null) decide(it, 'resolve', note, 'Resolving…');
+}
+
+// ---------- insights ----------
+const FOUND = { missing_payment: 'Trips not paid at all', surge_not_applied: 'Surge not applied', missing_incentive: 'Daily incentive not paid',
+  duplicate_penalty: 'Cancellation penalty charged twice', fare_mismatch: 'Wrong fare for the distance', penalty_mismatch: 'Wrong penalty' };
+const CLAIMED = { surge: 'Missing surge', incentive: 'Missing daily incentive', missing_payment: 'Order not paid', penalty_duplicate: 'Penalty charged twice',
+  penalty: 'Penalty', fare: 'Wrong fare', general: 'General: payout looks wrong', distance: 'Distance wrong' };
+const OUTCOME = { auto_paid: 'Paid automatically', approval_pending: 'Sent to ops for approval', nothing_owed: 'Nothing owed: paid correctly',
+  already_handled: 'Already paid earlier', out_of_window: 'Older than the 7-day window', no_data: 'No trips on that day' };
+const dur = sec => sec == null ? 'none yet' : sec < 1 ? `${(sec * 1000).toFixed(0)} ms` : sec < 90 ? `${sec.toFixed(1)} s`
+  : sec < 5400 ? `${Math.round(sec / 60)} min` : `${(sec / 3600).toFixed(1)} h`;
+const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
+S.view = 'queue';
+
+function setView(v) {
+  S.view = v;
+  document.querySelectorAll('.views button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  $('.main').hidden = v !== 'queue';
+  $('#insights').hidden = v !== 'insights';
+  if (v === 'insights') loadInsights();
+}
+document.querySelectorAll('.views button').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+
+async function loadInsights() {
+  try { renderInsights(await api('/ops/api/insights')); }
+  catch (e) { if (e.status !== 401 && e.status !== 403) toast(e.message, 'bad'); }
+}
+
+function renderInsights(d) {
+  const box = $('#insights-inner');
+  if (!d.disputes.total && !d.riders.total) {
+    box.replaceChildren(h('div', { class: 'ins-top' }, h('h2', {}, 'Insights')),
+      empty('No conversations yet.', 'Insights fill in as riders message the agent.'));
+    return;
+  }
+  const m = d.money, D = d.disputes;
+  const paid = m.paid_automatically.amount + m.paid_after_approval.amount;
+
+  const headlines = h('ul', { class: 'headlines' },
+    h('li', {}, h('b', {}, `${d.riders.agent_only} of ${d.riders.total} riders`), ` (${Math.round(d.riders.agent_only_pct ?? 0)}%) were sorted out without a person.`,
+      h('span', { class: 'sub' }, `${plural(d.riders.needed_human, 'rider')} needed ops for an approval or an escalation.`)),
+    h('li', {}, h('b', {}, `${rupees(paid)} paid`), ` to riders, and `, h('b', {}, `${rupees(m.waiting_for_approval.amount)} waiting`), ' for your approval.',
+      h('span', { class: 'sub' }, `${plural(m.paid_automatically.count, 'payout')} went out automatically; ${plural(m.paid_after_approval.count, 'payout')} after approval.`)),
+    h('li', {}, 'Riders were right in ', h('b', {}, `${Math.round(D.rider_right_pct ?? 0)}% of disputes`), '.',
+      h('span', { class: 'sub' }, `Out of ${plural(D.total, 'dispute')}, the agent settled ${D.settled_by_agent} (${Math.round(D.settled_by_agent_pct ?? 0)}%) by itself: it paid them, or showed the rider why nothing was owed.`)));
+
+  // Where the money went
+  const segs = [['auto', 'Paid automatically', m.paid_automatically], ['approved', 'Paid after approval', m.paid_after_approval],
+    ['sending', 'Sending now', m.sending], ['waiting', 'Waiting for approval', m.waiting_for_approval],
+    ['rejected', 'Rejected by ops', m.rejected_by_ops], ['stuck', 'Failed or stuck', m.failed_or_stuck]];
+  const total = segs.reduce((a, [, , v]) => a + v.amount, 0);
+  const bar = h('div', { class: 'moneybar', role: 'img', 'aria-label': segs.filter(([, , v]) => v.amount).map(([, l, v]) => `${l} ${rupees(v.amount)}`).join(', ') },
+    segs.filter(([, , v]) => v.amount > 0).map(([k, l, v]) => h('span', { class: 'c-' + k, style: `width:${(100 * v.amount / total).toFixed(2)}%`, title: `${l}: ${rupees(v.amount)}` })));
+  const moneyPanel = h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'Where the money went'), h('span', { class: 'muted' }, `${rupees(total)} found owed in total`)),
+    total ? bar : null,
+    h('div', { class: 'legend' }, segs.filter(([, , v]) => v.amount || v.count).map(([k, l, v]) =>
+      h('div', {}, h('i', { class: 'c-' + k }), h('span', {}, l, ' ', h('b', {}, rupees(v.amount)), ' ', h('small', {}, `(${v.count})`))))));
+
+  // Underpayments found
+  const maxFound = Math.max(1, ...d.underpayments_found.map(f => f.amount));
+  const found = h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'What the payout system got wrong')),
+    d.underpayments_found.length ? h('table', { class: 'grid' },
+      h('thead', {}, h('tr', {}, h('th', {}, 'Problem'), h('th', { style: 'text-align:right' }, 'Cases'), h('th', { style: 'text-align:right' }, 'Short by'), h('th', {}, ''))),
+      h('tbody', {}, d.underpayments_found.map(f => h('tr', {},
+        h('td', {}, FOUND[f.issue] || f.issue), h('td', { style: 'text-align:right' }, f.n), h('td', { style: 'text-align:right' }, h('b', {}, rupees(f.amount))),
+        h('td', { style: 'width:30%' }, h('div', { class: 'meter' }, h('span', { class: 'c-auto', style: `width:${(100 * f.amount / maxFound).toFixed(1)}%` }))))))) : empty('No underpayments found yet.'),
+    d.underpayments_found.length ? h('div', { class: 'panel-note' }, 'These point at bugs in the payout system itself. Fixing them upstream stops the complaints at the source.') : null);
+
+  // Claims vs reality
+  const claims = h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'What riders claimed, and how often they were right')),
+    d.claims.length ? h('table', { class: 'grid' }, h('tbody', {}, d.claims.map(c => {
+      const other = c.n - c.owed - c.not_owed;
+      return h('tr', {}, h('td', {}, CLAIMED[c.claimed] || c.claimed),
+        h('td', { style: 'text-align:right;white-space:nowrap' }, h('b', {}, `${c.owed} of ${c.n}`), ' right'),
+        h('td', { style: 'width:34%' }, h('div', { class: 'meter', title: `${c.owed} owed, ${c.not_owed} paid correctly, ${other} other (too old or no records)` },
+          h('span', { class: 'split-right', style: `width:${100 * c.owed / c.n}%` }), h('span', { class: 'split-wrong', style: `width:${100 * c.not_owed / c.n}%` }),
+          h('span', { class: 'split-other', style: `width:${100 * other / c.n}%` }))));
+    }))) : empty('No disputes yet.'),
+    d.claims.length ? h('div', { class: 'panel-note' }, 'Green: money was owed. Grey: the rider had been paid correctly. Light: too old or no records.') : null);
+
+  // Outcomes + escalations
+  const outcomes = h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'How disputes ended')),
+    h('table', { class: 'grid' }, h('tbody', {}, D.outcomes.filter(o => o.count).map(o => h('tr', {},
+      h('td', {}, OUTCOME[o.status] || o.status), h('td', { style: 'text-align:right' }, h('b', {}, o.count)),
+      h('td', { style: 'text-align:right;color:var(--muted)' }, o.amount ? rupees(o.amount) : ''))))),
+    h('div', { class: 'panel-note' }, 'Each rider asking about one day counts once, by the first decision made.'));
+  const esc = h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'Why cases came to ops')),
+    d.escalations.length ? h('table', { class: 'grid' }, h('tbody', {}, d.escalations.map(e => h('tr', {},
+      h('td', {}, (CATEGORY[e.category] || CATEGORY.other)[0]), h('td', { style: 'text-align:right' }, h('b', {}, e.n)),
+      h('td', { style: 'text-align:right;color:var(--muted)' }, e.open ? `${e.open} open` : 'all resolved'))))) : empty('No escalations.'));
+
+  // Speed + agent health
+  const ag = d.agent, sp = d.speed;
+  const llm = Object.entries(ag.planners).filter(([k]) => k.startsWith('llm:')).reduce((a, [, v]) => a + v, 0);
+  const allMsgs = Object.values(ag.planners).reduce((a, v) => a + v, 0);
+  const health = h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'Speed and agent health')),
+    h('div', { class: 'facts' },
+      h('div', { class: 'fact' }, h('b', {}, dur(sp.reply_p50_s)), h('span', {}, `typical reply time (95% within ${dur(sp.reply_p95_s)})`)),
+      h('div', { class: 'fact' }, h('b', {}, dur(sp.approval_decision_p50_s)), h('span', {}, `typical time for ops to decide (${plural(sp.approvals_decided, 'decision')})`)),
+      h('div', { class: 'fact' }, h('b', {}, sp.oldest_pending_at ? ago(sp.oldest_pending_at) : 'nothing'), h('span', {}, 'oldest item waiting for ops')),
+      h('div', { class: 'fact' }, h('b', {}, allMsgs ? `${Math.round(100 * llm / allMsgs)}%` : 'none'), h('span', {}, `of replies written by the LLM (${llm} of ${allMsgs}); the rest used templates`)),
+      h('div', { class: 'fact' }, h('b', {}, ag.llm_failures + ag.llm_replies_blocked), h('span', {}, `LLM failures (${ag.llm_failures}) and replies blocked by the safety check (${ag.llm_replies_blocked})`)),
+      h('div', { class: 'fact' }, h('b', {}, ag.security_flags), h('span', {}, 'messages flagged as impersonation or manipulation')),
+      h('div', { class: 'fact' }, h('b', {}, ag.duplicate_deliveries), h('span', {}, 'duplicate WhatsApp deliveries absorbed, none paid twice')),
+      h('div', { class: 'fact' }, h('b', {}, ag.riders_paused_for_flooding), h('span', {}, 'times a rider was paused for flooding'))));
+
+  const days = d.by_day.length ? h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h3', {}, 'By day')),
+    h('table', { class: 'grid' }, h('thead', {}, h('tr', {}, ...['Day', 'Messages', 'Paid', 'Sent for approval'].map(x => h('th', {}, x)))),
+      h('tbody', {}, d.by_day.map(r => h('tr', {}, h('td', {}, day(r.day)), h('td', {}, r.messages), h('td', {}, rupees(r.paid)), h('td', {}, rupees(r.queued))))))) : null;
+
+  fill(box,
+    h('div', { class: 'ins-top' }, h('h2', {}, 'How the agent is doing'),
+      h('span', { class: 'muted' }, `Updated ${new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}`, ' ',
+        h('button', { class: 'btn link', onclick: loadInsights }, 'Refresh'))),
+    headlines, moneyPanel, h('div', { class: 'cols' }, found, claims), h('div', { class: 'cols' }, outcomes, esc), health, days);
+}
+
+// ---------- boot ----------
+if (S.token && S.name) api('/ops/api/session').then(start).catch(e => showSignin(e.status ? null : "Can't reach the server."));
+else showSignin();
+})();
+</script>
+</body>
+</html>

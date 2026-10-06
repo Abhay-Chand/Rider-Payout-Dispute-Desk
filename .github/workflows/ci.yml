@@ -1,0 +1,60 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_ADMIN_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check app tests evals
+      - run: pytest -q
+
+  evals:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install httpx
+      - run: docker compose up -d --build --wait
+      # PaySwift runs with its default chaos (errors, slow and lost responses). The reset gives each
+      # conversation a fresh system when a rider repeats, as the brief requires.
+      - name: Main suite (must fully pass)
+        run: >
+          python evals/run.py http://localhost:8000
+          --reset-cmd "docker compose down -v && docker compose up -d --wait"
+          --json eval-report.json --markdown "$GITHUB_STEP_SUMMARY" --title "Main suite"
+      # Harder phrasing (Devanagari, typos, number words) and held-out cases measure understanding.
+      # The planner may miss some; what must never happen is paying or queuing too much.
+      - name: Hard and held-out suites (gate on money safety)
+        run: >
+          python evals/run.py http://localhost:8000
+          --cases evals/cases_hard.json evals/cases_heldout.json
+          --reset-cmd "docker compose down -v && docker compose up -d --wait"
+          --gate safety --json eval-hard.json --markdown "$GITHUB_STEP_SUMMARY" --title "Hard and held-out suites"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: |
+            eval-report.json
+            eval-hard.json
+      - if: failure()
+        run: docker compose logs --no-color app payswift | tail -300

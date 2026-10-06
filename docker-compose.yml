@@ -1,0 +1,41 @@
+# `docker compose up` starts the dispute desk, Postgres and the PaySwift sandbox.
+services:
+  payswift:
+    build: ./payswift
+    ports:
+      - "8081:8081"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: qd
+      POSTGRES_USER: qd
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qd-local-only}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qd -d qd"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://qd:${POSTGRES_PASSWORD:-qd-local-only}@postgres:5432/qd
+      PAYSWIFT_BASE_URL: http://payswift:8081
+      OPS_TOKEN: ${OPS_TOKEN:-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      payswift:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,30 @@
+const { JSDOM } = require('jsdom');
+const BASE = 'http://localhost:8000', sleep = ms => new Promise(r => setTimeout(r, ms));
+const until = async (fn, what, ms = 8000) => { const e = Date.now() + ms; while (Date.now() < e) { const v = fn(); if (v) return v; await sleep(50); } throw new Error('timed out: ' + what); };
+let bad = 0; const check = (ok, m) => { console.log((ok ? 'PASS ' : 'FAIL ') + m); if (!ok) bad++; };
+(async () => {
+  const dom = new JSDOM(await (await fetch(BASE + '/ops')).text(), { url: BASE + '/ops', runScripts: 'dangerously', pretendToBeVisual: true,
+    beforeParse(w) { w.fetch = (u, o) => fetch(new URL(u, BASE), o);
+      w.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+      w.HTMLDialogElement.prototype.close = function (v) { if (v !== undefined) this.returnValue = v; this.open = false; this.dispatchEvent(new w.Event('close')); }; } });
+  const w = dom.window, d = w.document, $ = s => d.querySelector(s), t = s => ($(s) || {}).textContent || '';
+  await until(() => !$('#signin').hidden, 'signin');
+  $('#signin-name').value = 'Meera'; $('#signin-token').value = 'devtoken';
+  $('#signin-form').dispatchEvent(new w.Event('submit', { cancelable: true }));
+  await until(() => !$('#app').hidden && d.querySelectorAll('#list .row').length, 'app');
+  console.log('     header: ' + [...d.querySelectorAll('#health .pill')].map(p => p.textContent).join(' | '));
+  console.log('     banners: ' + [...d.querySelectorAll('.banner')].map(b => b.textContent).join(' || '));
+  check(/Shadow mode: no reviews yet/.test(t('#health')), 'Header shows shadow mode before any decision');
+  check(/Shadow mode is on/.test(t('#banners')), 'Banner explains shadow mode and how to go live');
+  check(/Auto-pay ₹25 \/ ₹100/.test(t('#health')), 'Budget gauge: ₹25 of ₹100 (R005 ₹150 was over the ceiling, so it went to normal approval and does not count)');
+  [...d.querySelectorAll('#list .row')].find(r => /R003/.test(r.textContent)).click();
+  await until(() => $('.slip.approval'), 'slip');
+  check(/shadow mode/.test(t('.slip-title')) && /would have paid this by itself/.test(t('.slip.approval')), 'Slip says the agent would have paid this itself');
+  const agree = [...d.querySelectorAll('.slip.approval button')].find(b => /Agree and pay ₹25/.test(b.textContent));
+  check(!!agree, 'Buttons read "Agree and pay ₹25" / "Disagree and reject"');
+  agree.click(); await until(() => $('#dlg').open, 'dlg'); $('#dlg').close('ok');
+  await until(() => /Paid ₹25|Approved ₹25/.test(t('#toast')), 'toast', 15000);
+  await until(() => /Shadow mode: 100% agree \(1\/1\)/.test(t('#health')), 'agreement', 15000);
+  check(true, 'Agreement rate updates: ' + [...d.querySelectorAll('#health .pill')].find(p => /Shadow/.test(p.textContent)).textContent);
+  console.log(bad ? `\n${bad} FAILED` : '\nALL SHADOW-MODE UI CHECKS PASSED'); process.exit(bad ? 1 : 0);
+})().catch(e => { console.error('ERROR', e.message); process.exit(1); });
